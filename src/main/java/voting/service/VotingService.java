@@ -93,13 +93,13 @@ public class VotingService {
         return messageTransfer;
     }
 
-    public VoteDao getStatistic(String statisticUri) throws VoteException {
+    public List<VoteKind> getStatistic(String statisticUri) throws VoteException {
         if (isEmpty(statisticUri)) {
             throw new VoteException("Статистика не доступна");
         } else {
             Optional<VoteDao> first = storage.stream().filter(voteDao -> voteDao.getStatisticUri().contains(statisticUri)).findFirst();
             if (first.isPresent()) {
-                return first.get();
+                return first.get().getVoteOptions();
             } else throw new VoteException("Статистика не доступна");
         }
     }

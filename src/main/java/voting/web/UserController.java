@@ -64,7 +64,7 @@ public class UserController {
     }
 
     @GetMapping(value = "/statistic/{uri}")
-    public VoteDao getStatistic(@PathVariable String uri) throws VoteException {
+    public List<VoteKind> getStatistic(@PathVariable String uri) throws VoteException {
         return votingService.getStatistic(uri);
     }
 
