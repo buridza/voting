@@ -26,7 +26,6 @@ public class VotingService {
     public VoteDao createVote(VoteDao voteDao) {
         voteDao.setVoteUri(setNewUri());
         voteDao.setStatisticUri(setNewStatisticUri());
-//        setNewExpireDateTime(voteDao);
 
         storage.add(voteDao);
 
@@ -131,6 +130,7 @@ public class VotingService {
         if (first.isPresent()) {
             VoteDao voteDao = first.get();
             voteDao.setLocked(true);
+            voteDao.getVoteOptions().forEach(voteKind -> voteKind.setVoteCount(0));
             voteDao.setAdminId(((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getRequestedSessionId());
             setNewExpireDateTime(voteDao);
             return new MessageTransfer("Голосование запущено", 0);
