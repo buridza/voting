@@ -14,7 +14,7 @@ public class VoteBuilder {
     }
 
 
-    public static Builder newBuild(List<VoteDao> storage, Vote vote) throws VoteException {
+    public static synchronized Builder newBuild(List<VoteDao> storage, Vote vote) throws VoteException {
         Optional<VoteDao> voteTheme = storage.stream().filter(voteDao -> voteDao.getVoteUri().equals(vote.getUri())).findFirst();
         if (voteTheme.isPresent()) {
             return new VoteBuilder(voteTheme.get()).new Builder(vote);

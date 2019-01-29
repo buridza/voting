@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @Slf4j
-@RequestMapping(value = "/voting", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, consumes = MediaType.ALL_VALUE)
+@RequestMapping(value = "/voting", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 public class UserController {
     private final IVotingService votingService;
 
@@ -40,22 +40,12 @@ public class UserController {
         return votingService.updateVote(voteDao);
     }
 
-//    @RequestMapping(value = "/addNew", method = RequestMethod.POST)
-//    public void addThemes(HttpServletRequest httpServletRequest) {
-//        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-//        System.out.println(request.getRemoteAddr());
-//
-//        List<Cookie> x = Arrays.asList(httpServletRequest.getCookies());
-//        System.out.println(httpServletRequest.getRequestURL());
-//
-//    }
-
-    @GetMapping(value = "/vote/{uri}/{kind}")
+    @RequestMapping(value = "/vote/{uri}/{kind}", method = RequestMethod.GET)
     public MessageTransfer newVote(@PathVariable String uri, @PathVariable String kind, HttpServletRequest request) {
         return votingService.vote(new Vote(uri, kind, request.getRequestedSessionId()));
     }
 
-    @GetMapping(value = "/statistic/{uri}")
+    @RequestMapping(value = "/statistic/{uri}", method = RequestMethod.GET)
     public List<VoteKind> getStatistic(@PathVariable String uri) throws VoteException {
         return votingService.getStatistic(uri);
     }

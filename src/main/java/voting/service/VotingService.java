@@ -31,15 +31,13 @@ public class VotingService implements IVotingService {
             voteDao.setLocked(false);
             voteDao.setVoteUri(setNewUri());
             voteDao.setStatisticUri(setNewStatisticUri());
-            synchronized (storage) {
-                storage.add(voteDao);
-            }
+            storage.add(voteDao);
         }
 
         return voteDao;
     }
 
-    private void setNewExpireDateTime(VoteDao voteDao) {
+    private synchronized void setNewExpireDateTime(VoteDao voteDao) {
         if (voteDao.getExpireDate() == null) {
             voteDao.setExpireDate(LocalDateTime.now().plusHours(1));
         } else if (voteDao.getExpireDate().isBefore(LocalDateTime.now())) {
@@ -47,7 +45,7 @@ public class VotingService implements IVotingService {
         }
     }
 
-    private String setNewUri() {
+    private synchronized String setNewUri() {
         List<String> uris = storage.stream().map(VoteDao::getVoteUri).collect(Collectors.toList());
         List<String> statisticUris = storage.stream().map(VoteDao::getStatisticUri).collect(Collectors.toList());
 
@@ -59,7 +57,7 @@ public class VotingService implements IVotingService {
         }
     }
 
-    private String setNewStatisticUri() {
+    private synchronized String setNewStatisticUri() {
         List<String> uris = storage.stream().map(VoteDao::getStatisticUri).collect(Collectors.toList());
         List<String> statisticUris = storage.stream().map(VoteDao::getStatisticUri).collect(Collectors.toList());
         while (true) {
@@ -90,7 +88,7 @@ public class VotingService implements IVotingService {
         return messageTransfer;
     }
 
-    public List<VoteKind> getStatistic(String statisticUri) throws VoteException {
+    public synchronized List<VoteKind> getStatistic(String statisticUri) throws VoteException {
         if (isEmpty(statisticUri)) {
             throw new VoteException("Статистика не доступна");
         } else {
@@ -102,26 +100,24 @@ public class VotingService implements IVotingService {
     }
 
     @Override
-    public VoteDao updateVote(VoteDao voteDao) {
-        if(voteDao != null) {
+    public synchronized VoteDao updateVote(VoteDao voteDao) {
+        if (voteDao != null) {
             storage.stream().filter(dao -> dao.getVoteUri().equals(voteDao.getVoteUri())).findFirst().ifPresent(dao -> {
-                synchronized (storage) {
-                    dao.setVoteOptions(voteDao.getVoteOptions());
-                    dao.setExpireDate(voteDao.getExpireDate());
-                    dao.setVoteName(voteDao.getVoteName());
-                }
+                dao.setVoteOptions(voteDao.getVoteOptions());
+                dao.setExpireDate(voteDao.getExpireDate());
+                dao.setVoteName(voteDao.getVoteName());
             });
-
         }
         return voteDao;
     }
 
 
-    public MessageTransfer clear() {
-        if(storage.stream().noneMatch(VoteDao::isLocked)) {
+    public synchronized MessageTransfer clear() {
+        if (storage.stream().noneMatch(VoteDao::isLocked)) {
             storage.clear();
             return MessageTransfer.builder().successfulMessage("Хранилище очищено").build();
-        } return MessageTransfer.builder().errorMessage("Не все голосования завершены").statusCode(1).build();
+        }
+        return MessageTransfer.builder().errorMessage("Не все голосования завершены").statusCode(1).build();
     }
 
     public List<VoteDao> showAll() {
