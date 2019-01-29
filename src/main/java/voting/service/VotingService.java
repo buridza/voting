@@ -5,12 +5,14 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import voting.dto.MessageTransfer;
 import voting.dto.Vote;
+import voting.dto.VoteBuilder;
 import voting.dto.VoteDao;
 import voting.dto.VoteKind;
 import voting.exceptions.VoteException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -19,15 +21,20 @@ import static org.springframework.util.StringUtils.isEmpty;
 import static voting.utils.Utils.createUri;
 
 @Service
-public class VotingService {
+public class VotingService implements IVotingService {
 
-    private List<VoteDao> storage = new ArrayList<>();
+    private final List<VoteDao> storage = Collections.synchronizedList(new ArrayList<>());
 
     public VoteDao createVote(VoteDao voteDao) {
-        voteDao.setVoteUri(setNewUri());
-        voteDao.setStatisticUri(setNewStatisticUri());
-
-        storage.add(voteDao);
+        if (voteDao != null) {
+            voteDao.setAdminId("");
+            voteDao.setLocked(false);
+            voteDao.setVoteUri(setNewUri());
+            voteDao.setStatisticUri(setNewStatisticUri());
+            synchronized (storage) {
+                storage.add(voteDao);
+            }
+        }
 
         return voteDao;
     }
@@ -45,7 +52,6 @@ public class VotingService {
         List<String> statisticUris = storage.stream().map(VoteDao::getStatisticUri).collect(Collectors.toList());
 
         while (true) {
-
             String voteUri = createUri();
             if (uris.contains(voteUri) || statisticUris.contains(voteUri))
                 continue;
@@ -67,23 +73,15 @@ public class VotingService {
     public MessageTransfer vote(Vote vote) {
         MessageTransfer messageTransfer = new MessageTransfer();
         try {
-            Optional<VoteDao> voteTheme = storage.stream().filter(voteDao -> voteDao.getVoteUri().equals(vote.getUri())).findFirst();
-            if (voteTheme.isPresent()) {
-                if (voteTheme.get().isLocked()) {
 
-                    if (!voteTheme.get().getExpireDate().isBefore(LocalDateTime.now())) {
-                        Optional<String> cookie = voteTheme.get().getExcludeId().stream().filter(cookies -> cookies.equals(vote.getCookie())).findFirst();
-                        if (!cookie.isPresent()) {
-                            Optional<VoteKind> voteIncrement = voteTheme.get().getVoteOptions().stream().filter(voteKind -> voteKind.getKind().equals(vote.getVoteKind())).findFirst();
-                            if (voteIncrement.isPresent()) {
-                                VoteKind voteKind = voteIncrement.get();
-                                voteKind.setVoteCount(voteKind.getVoteCount() + 1);
-                                voteTheme.get().getExcludeId().add(vote.getCookie());
-                            } else throw new VoteException("Ваш вариант не найден");
-                        } else throw new VoteException("Ваш голос уже засчитан");
-                    } else throw new VoteException("Голосование завершено");
-                } else throw new VoteException("Голосование ещё не началось");
-            } else throw new VoteException("Голосование не найдено");
+            if (vote != null)
+                VoteBuilder
+                        .newBuild(storage, vote)
+                        .isStarted()
+                        .voteDateIsExpire()
+                        .validateByUserID()
+                        .increment();
+
             messageTransfer.setSuccessfulMessage("Ваш голос засчитан");
         } catch (Exception e) {
             messageTransfer.setStatusCode(1);
@@ -103,16 +101,34 @@ public class VotingService {
         }
     }
 
-    public void clear() {
-        System.out.println("Очищен");
-        storage.clear();
+    @Override
+    public VoteDao updateVote(VoteDao voteDao) {
+        if(voteDao != null) {
+            storage.stream().filter(dao -> dao.getVoteUri().equals(voteDao.getVoteUri())).findFirst().ifPresent(dao -> {
+                synchronized (storage) {
+                    dao.setVoteOptions(voteDao.getVoteOptions());
+                    dao.setExpireDate(voteDao.getExpireDate());
+                    dao.setVoteName(voteDao.getVoteName());
+                }
+            });
+
+        }
+        return voteDao;
+    }
+
+
+    public MessageTransfer clear() {
+        if(storage.stream().noneMatch(VoteDao::isLocked)) {
+            storage.clear();
+            return MessageTransfer.builder().successfulMessage("Хранилище очищено").build();
+        } return MessageTransfer.builder().errorMessage("Не все голосования завершены").statusCode(1).build();
     }
 
     public List<VoteDao> showAll() {
         return storage;
     }
 
-    public MessageTransfer stopVoting(String voteUri) {
+    public synchronized MessageTransfer stopVoting(String voteUri) {
         Optional<VoteDao> first = storage.stream().filter(dao -> !isEmpty(dao.getVoteUri())).filter(uri -> uri.getVoteUri().equals(voteUri)).findFirst();
         if (first.isPresent()) {
             VoteDao voteDao = first.get();
@@ -125,7 +141,7 @@ public class VotingService {
         return new MessageTransfer(1, "Голосование не найдено");
     }
 
-    public MessageTransfer startVoting(String voteUri) {
+    public synchronized MessageTransfer startVoting(String voteUri) {
         Optional<VoteDao> first = storage.stream().filter(dao -> !isEmpty(dao.getVoteUri())).filter(uri -> uri.getVoteUri().equals(voteUri)).findFirst();
         if (first.isPresent()) {
             VoteDao voteDao = first.get();

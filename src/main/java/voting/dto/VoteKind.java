@@ -11,4 +11,8 @@ public class VoteKind {
     public VoteKind(String kind) {
         this.kind = kind;
     }
+
+    public  int increment() {
+        return voteCount++;
+    }
 }

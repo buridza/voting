@@ -3,8 +3,14 @@ package voting;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
+import voting.dto.Vote;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
@@ -20,10 +26,11 @@ public class test {
         }
         return uri.toString();
     }
+
     @Test
     public void allCharCode() {
-        for (int i = 0; i < 255;) {
-            System.out.printf("%5s -> %5s , %5s -> %5s , %5s -> %5s , %5s -> %5s , %5s -> %5s\n", (char)i, i++, (char)i, i++, (char)i, i++, (char)i, i++, (char)i, i++);
+        for (int i = 0; i < 255; ) {
+            System.out.printf("%5s -> %5s , %5s -> %5s , %5s -> %5s , %5s -> %5s , %5s -> %5s\n", (char) i, i++, (char) i, i++, (char) i, i++, (char) i, i++, (char) i, i++);
         }
     }
 
@@ -36,4 +43,6 @@ public class test {
         }
         System.out.println(strings.size() + " " + (System.currentTimeMillis() - l));
     }
+
+
 }
